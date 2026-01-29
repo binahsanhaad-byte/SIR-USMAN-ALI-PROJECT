@@ -1,0 +1,61 @@
+#include "ParkingRequest.h"
+#include <iostream>
+using namespace std;
+
+RequestNode::RequestNode(string vID, int zone) : 
+    vehicleID(vID), requestedZone(zone), allocatedSlot(-1), allocatedZone(-1), allocatedArea(-1), 
+    state(REQUESTED), penalty(0), next(nullptr), requestTime(TimeStamp()) {}
+
+bool RequestNode::isValidTransition(RequestState newState) {
+    switch(state) {
+        case REQUESTED: return (newState == ALLOCATED || newState == CANCELLED);
+        case ALLOCATED: return (newState == OCCUPIED || newState == CANCELLED);
+        case OCCUPIED: return (newState == RELEASED);
+        case RELEASED:
+        case CANCELLED: return false;
+    }
+    return false;
+}
+
+bool RequestNode::changeState(RequestState newState) {
+    if (isValidTransition(newState)) {
+        if (newState == ALLOCATED) allocationTime = TimeStamp();
+        else if (newState == RELEASED || newState == CANCELLED) completionTime = TimeStamp();
+        state = newState;
+        return true;
+    }
+    return false;
+}
+
+float RequestNode::getParkingDuration() const {
+    if (state == RELEASED) return requestTime.getHoursDifference(completionTime);
+    return 0.0f;
+}
+
+void RequestNode::display() const {
+    cout << "Request - Vehicle: " << vehicleID << endl;
+    cout << "  Requested Zone: " << requestedZone << endl;
+    cout << "  State: ";
+    switch(state) {
+        case REQUESTED: cout << "REQUESTED"; break;
+        case ALLOCATED: cout << "ALLOCATED"; break;
+        case OCCUPIED: cout << "OCCUPIED"; break;
+        case RELEASED: cout << "RELEASED"; break;
+        case CANCELLED: cout << "CANCELLED"; break;
+    }
+    cout << " | Request Time: ";
+    requestTime.display();
+    if (allocatedSlot != -1) {
+        cout << "\n  Allocated: Slot " << allocatedSlot << " in Zone " << allocatedZone 
+             << ", Area " << allocatedArea;
+        if (penalty > 0) cout << " (Penalty: $" << penalty << ")";
+        cout << "\n  Allocation Time: ";
+        allocationTime.display();
+    }
+    if (state == RELEASED || state == CANCELLED) {
+        cout << "\n  Completion Time: ";
+        completionTime.display();
+        if (state == RELEASED) cout << " | Duration: " << getParkingDuration() << " hours";
+    }
+    cout << endl;
+}
